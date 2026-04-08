@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="NovaBank.Domain/NovaBank.Domain.csproj" />
+  <Project Path="NovaBank/NovaBank.csproj" />
+</Solution>
