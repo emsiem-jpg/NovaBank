@@ -5,7 +5,19 @@
         const int AccountNumberLength = 10;
         const int initialBalance = 0;
         public Guid Id { get; set; }
-        public string AccountNumber { get; private set; }
+        public List<Transaction> Transactions { get; private set; }
+        public string AccountNumber 
+        { 
+            get;
+            private set
+            {
+                if (value.Length != AccountNumberLength)
+                {
+                    throw new ArgumentException($"Account number must be {AccountNumberLength} characters long.");
+                }
+                field = value;
+            }
+        }
         public decimal Balance { get; private set; }
 
         public Account(string accountNumber, decimal initialBalance)
@@ -13,6 +25,7 @@
             Id = Guid.NewGuid();
             AccountNumber = accountNumber;
             Balance = initialBalance;
+            Transactions = new List<Transaction>();
         }
 
         public void Deposit(decimal amount)
