@@ -1,21 +1,31 @@
-﻿using System;
+﻿using NovaBank.Domain.Events;
+using System;
 using System.Collections.Generic;
 
 namespace NovaBank.Domain
 {
     public class Account
     {
-        private const int AccountNumberLength = 10;
+        private const int AccountNumberLength = 26;
         private readonly List<Transaction> _transactions;
 
         public Guid Id { get; private set; }
         public IReadOnlyCollection<Transaction> Transactions => _transactions.AsReadOnly();
-        public decimal Balance { get; private set; }
+        public decimal Balance
+        {
+            get;
+            private set
+            {
+                if (value < 0)
+                    throw new InvalidOperationException("Balance cannot be negative.");
+                field = value;
+            }
+        }
 
         public string AccountNumber
         {
             get;
-            private set
+            init
             {
                 if (value.Length != AccountNumberLength)
                 {
@@ -31,6 +41,12 @@ namespace NovaBank.Domain
             AccountNumber = accountNumber;
             _transactions = new List<Transaction>();
 
+            var openedEvent = new AccountOpened(
+                this.Id,
+                this.AccountNumber,
+                initialBalance,
+                DateTime.UtcNow); 
+
             if (initialBalance > 0)
             {
                 Deposit(initialBalance, "Initial balance");
@@ -43,6 +59,7 @@ namespace NovaBank.Domain
                 throw new ArgumentException("Deposit amount must be greater than zero.");
 
             Balance += amount;
+            var @event = new MoneyDeposited(this.Id, amount, description, DateTime.UtcNow);
             _transactions.Add(new Transaction(amount, TransactionType.Deposit, description));
         }
 
@@ -54,6 +71,7 @@ namespace NovaBank.Domain
                 throw new InvalidOperationException("Insufficient funds.");
 
             Balance -= amount;
+            var @event = new MoneyWithdrawn(this.Id, amount, description, DateTime.UtcNow);
             _transactions.Add(new Transaction(amount, TransactionType.Withdrawal, description));
         }
     }
