@@ -12,9 +12,18 @@ namespace NovaBank.Domain
         public class Transaction
         {
             public Guid Id { get; private set; }
-            public decimal Amount { get; private set; }
+        public decimal Amount
+        {
+            get;
+            init
+            {
+                if (value <= 0)
+                    throw new ArgumentOutOfRangeException(nameof(Amount), "Amount must be positive.");
+                field = value;
+            }
+        }
 
-            public DateTime Date { get; private set; }
+        public DateTime Date { get; private set; }
 
             public TransactionType Type { get; private set; }
 
