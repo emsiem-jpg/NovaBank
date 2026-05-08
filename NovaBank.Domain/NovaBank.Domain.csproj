@@ -9,9 +9,4 @@
   <ItemGroup>
     <PackageReference Include="Marten" Version="8.35.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\NovaBank\NovaBank.csproj" />
-  </ItemGroup>
-
 </Project>

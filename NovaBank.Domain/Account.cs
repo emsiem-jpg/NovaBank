@@ -6,73 +6,68 @@ namespace NovaBank.Domain
 {
     public class Account
     {
+        private readonly List<object> _uncommittedEvents = new();
         private const int AccountNumberLength = 26;
-        private readonly List<Transaction> _transactions;
+        private readonly List<Transaction> _transactions = new();
 
         public Guid Id { get; private set; }
+        public decimal Balance { get; private set; }
+        public string AccountNumber { get; private set; } = string.Empty;
         public IReadOnlyCollection<Transaction> Transactions => _transactions.AsReadOnly();
-        public decimal Balance
+
+      
+        private Account() { }
+
+        public static Account Open(Guid id, string number, decimal initialBalance)
         {
-            get;
-            private set
-            {
-                if (value < 0)
-                    throw new InvalidOperationException("Balance cannot be negative.");
-                field = value;
-            }
+            var account = new Account();
+            var @event = new AccountOpened(id, number, initialBalance, DateTime.UtcNow);
+
+            account.Apply(@event); 
+            account._uncommittedEvents.Add(@event); 
+            return account;
         }
 
-        public string AccountNumber
+        public void Apply(AccountOpened e)
         {
-            get;
-            init
-            {
-                if (value.Length != AccountNumberLength)
-                {
-                    throw new ArgumentException($"Account number must be {AccountNumberLength} characters long.");
-                }
-                field = value;
-            }
+            Id = e.Id;
+            AccountNumber = e.AccountNumber;
+            Balance = e.InitialBalance;
         }
 
-        public Account(string accountNumber, decimal initialBalance)
+        public void Apply(MoneyDeposited e)
         {
-            Id = Guid.NewGuid();
-            AccountNumber = accountNumber;
-            _transactions = new List<Transaction>();
-
-            var openedEvent = new AccountOpened(
-                this.Id,
-                this.AccountNumber,
-                initialBalance,
-                DateTime.UtcNow); 
-
-            if (initialBalance > 0)
-            {
-                Deposit(initialBalance, "Initial balance");
-            }
+            Balance += e.Amount;
+            _transactions.Add(new Transaction(e.Amount, TransactionType.Deposit, e.Description));
         }
+
+        public void Apply(MoneyWithdrawn e)
+        {
+            Balance -= e.Amount;
+            _transactions.Add(new Transaction(e.Amount, TransactionType.Withdrawal, e.Description));
+        }
+
 
         public void Deposit(decimal amount, string description = "Deposit")
         {
-            if (amount <= 0)
-                throw new ArgumentException("Deposit amount must be greater than zero.");
+            if (amount <= 0) throw new ArgumentException("Amount must be positive");
 
-            Balance += amount;
-            var @event = new MoneyDeposited(this.Id, amount, description, DateTime.UtcNow);
-            _transactions.Add(new Transaction(amount, TransactionType.Deposit, description));
+            var @event = new MoneyDeposited(Id, amount, description, DateTime.UtcNow);
+            Apply(@event);
+            _uncommittedEvents.Add(@event);
+            _uncommittedEvents.Add(@event);
         }
 
         public void Withdraw(decimal amount, string description = "Withdrawal")
         {
-            if (amount <= 0)
-                throw new ArgumentException("Withdrawal amount must be greater than zero.");
-            if (amount > Balance)
-                throw new InvalidOperationException("Insufficient funds.");
+            if (amount <= 0) throw new ArgumentException("Amount must be positive");
+            if (Balance < amount) throw new InvalidOperationException("Insufficient funds");
 
-            Balance -= amount;
-            var @event = new MoneyWithdrawn(this.Id, amount, description, DateTime.UtcNow);
-            _transactions.Add(new Transaction(amount, TransactionType.Withdrawal, description));
+            var @event = new MoneyWithdrawn(Id, amount, description, DateTime.UtcNow);
+            Apply(@event);
+            _uncommittedEvents.Add(@event);
         }
+        public IEnumerable<object> GetUncommittedEvents() => _uncommittedEvents;
+        public void ClearUncommittedEvents() => _uncommittedEvents.Clear();
     }
 }

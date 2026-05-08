@@ -1,22 +1,25 @@
 using Marten;
 using NovaBank.Domain;
 using NovaBank.Domain.Infrastructure;
-using System.Security.Principal;
 
 var connectionString = "Host=localhost;Port=5432;Database=novabank;Username=admin;Password=password123";
-
 using var store = MartenConfig.GetStore(connectionString);
-
 using var session = store.LightweightSession();
 
 
 var accountId = Guid.NewGuid();
-var accountNumber = "1234567890";
+var account = Account.Open(accountId, "PL00112233445566778899", 500m);
 
-session.Events.StartStream<Account>(accountId,
-    new NovaBank.Domain.Events.AccountOpened(accountId, accountNumber, 100m, DateTime.UtcNow)
-);
 
+account.Deposit(200m, "Prezent od babci");
+account.Withdraw(100m, "Zakupy w Żabce");
+
+
+session.Events.StartStream(account.Id, account.GetUncommittedEvents());
 await session.SaveChangesAsync();
 
-Console.WriteLine("Works.");
+Console.WriteLine($"Konto zapisane. Saldo końcowe: {account.Balance}");
+
+
+var accountFromDb = await session.Events.AggregateStreamAsync<Account>(accountId);
+Console.WriteLine($"Odczytano z bazy. Saldo: {accountFromDb?.Balance}");
