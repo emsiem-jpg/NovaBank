@@ -55,7 +55,6 @@ namespace NovaBank.Domain
             var @event = new MoneyDeposited(Id, amount, description, DateTime.UtcNow);
             Apply(@event);
             _uncommittedEvents.Add(@event);
-            _uncommittedEvents.Add(@event);
         }
 
         public void Withdraw(decimal amount, string description = "Withdrawal")
